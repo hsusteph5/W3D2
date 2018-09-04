@@ -62,6 +62,10 @@ class User
   def authored_replies
     arr_replies = Reply.find_by_user_id(@id)
   end
+  
+  def followed_questions
+    QuestionFollow.followed_questions_for_user_id(@id)
+  end
 end
 
 class Question
@@ -114,6 +118,10 @@ class Question
   
   def replies
     Reply.find_by_question_id(@id)
+  end
+  
+  def followers
+    QuestionFollow.followers_for_question_id(@id)
   end
 end
 
@@ -205,5 +213,55 @@ class Reply
   def child_reply
     Reply.find_by_children_id(@id)
   end 
+  
+end
+
+
+
+class QuestionFollow
+  attr_accessor :user_id, :question_id
+  
+  def self.all
+    data = QuestionsDatabase.instance.execute("SELECT * FROM question_follows")
+    data.map { |datum| QuestionFollow.new(datum) }
+  end
+
+  def self.followers_for_question_id(question_id)
+    follow_arr = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+      SELECT
+        user_id
+      FROM
+        question_follows
+      WHERE
+        question_id = ?
+    SQL
+    return nil unless follow_arr.length > 0
+    
+    follow_arr.map do |hash|
+      User.find_by_id(hash['user_id'])
+    end
+  end
+  
+  def self.followed_questions_for_user_id(user_id)
+    follow_arr = QuestionsDatabase.instance.execute(<<-SQL, user_id)
+      SELECT
+        question_id
+      FROM
+        question_follows
+      WHERE
+        user_id = ?
+    SQL
+    return nil unless follow_arr.length > 0
+    
+    follow_arr.map do |hash|
+      Question.find_by_id(hash['question_id'])
+    end
+  end
+
+  def initialize(options)
+    @id = options['id']
+    @user_id = options['user_id']
+    @question_id = options['question_id']
+  end
   
 end
