@@ -225,37 +225,51 @@ class QuestionFollow
     data = QuestionsDatabase.instance.execute("SELECT * FROM question_follows")
     data.map { |datum| QuestionFollow.new(datum) }
   end
+  
+  def self.most_followed_question(n = 1)
+    follow_arr = QuestionsDatabase.instance.execute(<<-SQL, n)
+      SELECT 
+        questions.id, questions.title, questions.body, questions.author_id
+      FROM 
+        question_follows
+      JOIN 
+        questions ON questions.id = question_follows.question_id
+      GROUP BY 
+        question_follows.question_id 
+      ORDER BY 
+        COUNT(question_follows.question_id) DESC 
+      LIMIT 
+        ?
+    SQL
+    follow_arr.map {|hash| Question.new(hash)}
+  end
 
   def self.followers_for_question_id(question_id)
     follow_arr = QuestionsDatabase.instance.execute(<<-SQL, question_id)
-      SELECT
-        user_id
-      FROM
+      SELECT 
+        users.id, users.fname, users.lname
+      FROM 
         question_follows
+      JOIN 
+        users ON users.id = question_follows.user_id
       WHERE
-        question_id = ?
+        question_follows.question_id = ?
     SQL
-    return nil unless follow_arr.length > 0
-    
-    follow_arr.map do |hash|
-      User.find_by_id(hash['user_id'])
-    end
+    follow_arr.map {|hash| User.new(hash)}
   end
   
   def self.followed_questions_for_user_id(user_id)
     follow_arr = QuestionsDatabase.instance.execute(<<-SQL, user_id)
-      SELECT
-        question_id
-      FROM
+      SELECT 
+        questions.id, questions.title, questions.body, questions.author_id
+      FROM 
         question_follows
+      JOIN 
+        questions ON questions.id = question_follows.question_id
       WHERE
-        user_id = ?
+        question_follows.user_id = ?
     SQL
-    return nil unless follow_arr.length > 0
-    
-    follow_arr.map do |hash|
-      Question.find_by_id(hash['question_id'])
-    end
+    follow_arr.map {|hash| Question.new(hash)}
   end
 
   def initialize(options)
