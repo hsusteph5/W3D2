@@ -105,6 +105,11 @@ class Question
     question_array.map! {|hash| Question.new(hash) }  # play is stored in an array!
   end
 
+
+  def self.most_followed(n = 1)
+    QuestionFollow.most_followed_question(n)
+  end
+
   def initialize(options)
     @id = options['id']
     @title = options['title']
@@ -123,6 +128,7 @@ class Question
   def followers
     QuestionFollow.followers_for_question_id(@id)
   end
+
 end
 
 class Reply
@@ -279,3 +285,44 @@ class QuestionFollow
   end
   
 end
+
+class QuestionLike
+  
+  attr_accessor :question_id, :user_id
+  
+  def self.likers_for_question_id(question_id)
+    likers_arr = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+      SELECT 
+        users.id, users.fname, users.lname
+      FROM 
+        question_likes
+      JOIN 
+        users ON users.id = question_likes.user_id
+      WHERE
+        question_likes.question_id = ?
+    SQL
+    likers_arr.map {|hash| User.new(hash)}
+  end 
+  
+  def self.num_likes_for_question_id(question_id)
+    answer = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+      SELECT 
+        COUNT(question_id)
+      FROM 
+        question_likes
+      GROUP BY 
+        question_id
+      WHERE 
+        question_id = ?
+    SQL
+    answer
+  end 
+  
+  def initialize(options)
+    @id = options['id']
+    @question_id = options['question_id']
+    @user_id = options['user_id']
+  end 
+  
+  
+end 
